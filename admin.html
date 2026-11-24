@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel de Administración | Nida Yalico Inmobiliaria</title>
+    <meta name="robots" content="noindex, nofollow">
+
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        navy: {
+                            800: '#111d33',
+                            900: '#0b1526',
+                            950: '#060c17'
+                        },
+                        gold: {
+                            400: '#dfb74a',
+                            500: '#cba135',
+                            600: '#b38b24',
+                            700: '#946f17'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Supabase JS Client (Oficial CDN) -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <!-- Google Fonts & Custom CSS -->
+    <link rel="stylesheet" href="css/style.css">
+
+    <!-- FontAwesome CDN (Icons) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+</head>
+<body class="bg-slate-100 text-slate-800 antialiased min-h-screen flex flex-col selection:bg-gold-500 selection:text-white">
+
+    <!-- HEADER DEL PANEL -->
+    <header class="bg-navy-950 text-white border-b border-white/10 sticky top-0 z-30 shadow-md">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-20">
+                
+                <!-- BRAND / TITULO -->
+                <div class="flex items-center gap-3">
+                    <a href="index.html" class="w-10 h-10 rounded-xl bg-gradient-gold flex items-center justify-center text-navy-950 font-serif font-black text-lg shadow">
+                        NY
+                    </a>
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <span class="font-serif font-bold text-lg sm:text-xl text-white">Nida Yalico</span>
+                            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-gold-500/20 text-gold-400 border border-gold-500/30">
+                                Panel Admin
+                            </span>
+                        </div>
+                        <p class="text-[11px] text-slate-400">Gestión de Inmuebles en Cono Norte</p>
+                    </div>
+                </div>
+
+                <!-- ACCIONES DE CABECERA -->
+                <div class="flex items-center gap-3">
+                    <a href="index.html" target="_blank" class="hidden sm:inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-slate-200 text-xs font-semibold transition">
+                        <i class="fa-solid fa-arrow-up-right-from-square"></i> <span>Ver Web Pública</span>
+                    </a>
+
+                    <!-- BOTÓN CONFIGURACIÓN SUPABASE -->
+                    <button id="btnOpenConfigModal" class="px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-slate-200 text-xs font-semibold transition flex items-center gap-1.5" title="Configurar conexión Supabase">
+                        <i class="fa-solid fa-database text-gold-400"></i>
+                        <span id="supabaseStatusBadge" class="hidden sm:inline">Conexión</span>
+                    </button>
+
+                    <!-- BOTÓN CERRAR SESIÓN -->
+                    <button id="btnLogout" class="hidden px-3.5 py-2 rounded-xl bg-red-500/20 hover:bg-red-500/30 text-red-300 text-xs font-semibold transition flex items-center gap-1.5">
+                        <i class="fa-solid fa-right-from-bracket"></i>
+                        <span class="hidden sm:inline">Salir</span>
+                    </button>
+                </div>
+
+            </div>
+        </div>
+    </header>
+
+    <!-- CONTENEDOR PRINCIPAL -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+        <!-- 1. PANTALLA DE LOGIN (VISIBLE SI NO ESTÁ AUTENTICADO) -->
+        <div id="loginView" class="max-w-md mx-auto my-12">
+            <div class="bg-white rounded-3xl p-8 sm:p-10 shadow-xl border border-slate-200 text-slate-800">
+                <div class="text-center mb-8">
+                    <div class="w-16 h-16 rounded-2xl bg-gradient-gold mx-auto flex items-center justify-center text-navy-950 font-serif font-black text-2xl shadow-md mb-4">
+                        NY
+                    </div>
+                    <h2 class="font-serif font-bold text-2xl text-navy-950">Acceso Administrativo</h2>
+                    <p class="text-xs text-slate-500 mt-1">Ingresa para publicar y gestionar propiedades</p>
+                </div>
+
+                <div id="loginAlert" class="hidden mb-5 p-3.5 rounded-xl text-xs font-medium border"></div>
+
+                <form id="loginForm" class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 uppercase mb-1">ID, Usuario o Correo</label>
+                        <div class="relative">
+                            <i class="fa-solid fa-user absolute left-3.5 top-3.5 text-slate-400 text-sm"></i>
+                            <input type="text" id="loginIdentifier" required placeholder="Ingresa tu ID, usuario o correo" class="w-full bg-slate-50 border border-slate-300 rounded-xl pl-10 pr-4 py-2.5 text-sm focus:ring-2 focus:ring-gold-500 focus:outline-none">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Contraseña</label>
+                        <div class="relative">
+                            <i class="fa-solid fa-lock absolute left-3.5 top-3.5 text-slate-400 text-sm"></i>
+                            <input type="password" id="loginPassword" required placeholder="Tu contraseña privada" class="w-full bg-slate-50 border border-slate-300 rounded-xl pl-10 pr-4 py-2.5 text-sm focus:ring-2 focus:ring-gold-500 focus:outline-none">
+                        </div>
+                    </div>
+
+                    <button type="submit" id="btnLoginSubmit" class="w-full py-3.5 rounded-xl bg-gradient-gold hover:bg-gold-600 text-navy-950 font-bold text-sm transition flex items-center justify-center gap-2 gold-glow shadow">
+                        <i class="fa-solid fa-right-to-bracket"></i>
+                        <span>Iniciar Sesión</span>
+                    </button>
+                </form>
+
+                <div class="mt-6 pt-6 border-t border-slate-100 flex flex-col gap-2.5 text-center">
+                    <button id="btnQuickSignup" class="text-xs text-gold-600 hover:text-gold-700 font-semibold transition">
+                        ¿Primera vez? Registrar este ID y Contraseña en Supabase
+                    </button>
+                    <button id="btnLocalDemoMode" class="text-xs text-slate-500 hover:text-slate-800 transition">
+                        Entrar en Modo Prueba (Sin conexión inmediata)
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. VISTA PRINCIPAL DEL PANEL (VISIBLE AL INICIAR SESIÓN) -->
+        <div id="dashboardView" class="hidden space-y-8">
+
+            <!-- BANNER DE BIENVENIDA Y ACCIONES RÁPIDAS -->
+            <div class="bg-navy-950 text-white rounded-3xl p-6 sm:p-8 shadow-xl border border-gold-500/20 relative overflow-hidden">
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
+                    <div>
+                        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs font-semibold mb-2">
+                            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span> Panel Activo
+                        </div>
+                        <h1 class="text-2xl sm:text-3xl font-serif font-bold text-white">
+                            Hola, Nida Yalico
+                        </h1>
+                        <p class="text-xs sm:text-sm text-slate-300 mt-1">
+                            Sube nuevos inmuebles, actualiza precios, cambia estados y gestiona tus fotos en la nube.
+                        </p>
+                    </div>
+
+                    <div class="flex flex-wrap items-center gap-3">
+                        <button id="btnOpenNewPropertyModal" class="px-5 py-3 rounded-2xl bg-gradient-gold hover:bg-gold-600 text-navy-950 font-bold text-xs sm:text-sm transition flex items-center gap-2 gold-glow shadow-lg">
+                            <i class="fa-solid fa-plus-circle text-base"></i>
+                            <span>Publicar Nuevo Inmueble</span>
+                        </button>
+                        <button id="btnMigrateToSupabase" class="px-4 py-3 rounded-2xl bg-white/10 hover:bg-white/20 text-white text-xs font-semibold transition flex items-center gap-2 border border-white/10" title="Subir los 6 inmuebles iniciales de muestra a Supabase">
+                            <i class="fa-solid fa-cloud-arrow-up text-gold-400"></i>
+                            <span>Subir Inmuebles Base a Supabase</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- METRICS RESUMEN -->
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-8 pt-6 border-t border-white/10 text-center">
+                    <div class="p-3 bg-white/5 rounded-2xl">
+                        <div class="text-xs text-slate-400">Total Inmuebles</div>
+                        <div id="statTotal" class="text-2xl font-serif font-bold text-white mt-1">0</div>
+                    </div>
+                    <div class="p-3 bg-white/5 rounded-2xl">
+                        <div class="text-xs text-slate-400">En Venta</div>
+                        <div id="statVenta" class="text-2xl font-serif font-bold text-gold-400 mt-1">0</div>
+                    </div>
+                    <div class="p-3 bg-white/5 rounded-2xl">
+                        <div class="text-xs text-slate-400">En Alquiler</div>
+                        <div id="statAlquiler" class="text-2xl font-serif font-bold text-blue-400 mt-1">0</div>
+                    </div>
+                    <div class="p-3 bg-white/5 rounded-2xl">
+                        <div class="text-xs text-slate-400">Vendidos / Alquilados</div>
+                        <div id="statClosed" class="text-2xl font-serif font-bold text-emerald-400 mt-1">0</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- BARRA DE BÚSQUEDA Y FILTROS DEL LISTADO -->
+            <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div class="w-full sm:w-80 relative">
+                    <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-3.5 text-slate-400 text-sm"></i>
+                    <input type="text" id="adminSearchInput" placeholder="Buscar por título, código o distrito..." class="w-full bg-white border border-slate-200 rounded-2xl pl-10 pr-4 py-2.5 text-xs sm:text-sm focus:ring-2 focus:ring-gold-500 focus:outline-none shadow-sm">
+                </div>
+
+                <div class="flex items-center gap-2 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0">
+                    <button class="status-filter-btn px-4 py-2 rounded-xl text-xs font-bold transition bg-navy-950 text-white" data-status="todos">
+                        Todos
+                    </button>
+                    <button class="status-filter-btn px-4 py-2 rounded-xl text-xs font-bold transition bg-white text-slate-600 border border-slate-200 hover:bg-slate-50" data-status="disponible">
+                        Disponibles
+                    </button>
+                    <button class="status-filter-btn px-4 py-2 rounded-xl text-xs font-bold transition bg-white text-slate-600 border border-slate-200 hover:bg-slate-50" data-status="vendido">
+                        Vendidos
+                    </button>
+                    <button class="status-filter-btn px-4 py-2 rounded-xl text-xs font-bold transition bg-white text-slate-600 border border-slate-200 hover:bg-slate-50" data-status="alquilado">
+                        Alquilados
+                    </button>
+                </div>
+            </div>
+
+            <!-- LISTADO DE PROPIEDADES EN EL PANEL -->
+            <div id="adminPropertiesList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- Se inyecta dinámicamente con admin.js -->
+            </div>
+
+            <!-- MENSAJE VACÍO -->
+            <div id="adminEmptyMsg" class="hidden text-center py-16 bg-white rounded-3xl border border-slate-200 shadow-sm">
+                <i class="fa-solid fa-folder-open text-5xl text-slate-300 mb-3"></i>
+                <h3 class="font-serif font-bold text-lg text-slate-700">No hay inmuebles que coincidan con la búsqueda</h3>
+                <p class="text-xs text-slate-400 mt-1">Prueba cambiando los filtros o publica una nueva propiedad.</p>
+            </div>
+
+        </div>
+
+    </main>
+
+    <!-- ======================================================================== -->
+    <!-- MODAL: PUBLICAR / EDITAR PROPIEDAD -->
+    <!-- ======================================================================== -->
+    <div id="propertyModal" class="hidden fixed inset-0 z-50 bg-navy-950/70 backdrop-blur-sm overflow-y-auto p-4 flex items-center justify-center">
+        <div class="bg-white w-full max-w-3xl rounded-3xl shadow-2xl border border-slate-200 overflow-hidden my-8 transform transition-all">
+            
+            <!-- MODAL HEADER -->
+            <div class="bg-navy-950 p-6 text-white flex items-center justify-between border-b border-white/10">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-gold-500/20 text-gold-400 flex items-center justify-center text-lg font-bold">
+                        <i class="fa-solid fa-house-medical"></i>
+                    </div>
+                    <div>
+                        <h3 id="modalTitle" class="font-serif font-bold text-xl text-white">Publicar Nuevo Inmueble</h3>
+                        <p class="text-xs text-slate-400">Completa los datos y sube las fotografías del inmueble</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-3">
+                    <button type="button" onclick="document.getElementById('propertyForm').requestSubmit()" class="px-4 py-2 rounded-xl bg-gradient-gold hover:bg-gold-600 text-navy-950 font-bold text-xs flex items-center gap-1.5 shadow transition">
+                        <i class="fa-solid fa-floppy-disk"></i>
+                        <span id="btnModalHeaderSave">Guardar</span>
+                    </button>
+                    <button id="btnCloseModal" class="text-slate-400 hover:text-white text-2xl transition">&times;</button>
+                </div>
+            </div>
+
+            <!-- MODAL BODY & FORM -->
+            <form id="propertyForm" class="p-6 sm:p-8 space-y-6 max-h-[80vh] overflow-y-auto">
+                <input type="hidden" id="formPropId">
+
+                <!-- INFORMACIÓN BÁSICA -->
+                <div class="space-y-4">
+                    <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400 border-b border-slate-100 pb-2">
+                        1. Información Principal
+                    </h4>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div class="sm:col-span-2">
+                            <label class="block text-xs font-bold text-slate-700 mb-1">Título del Inmueble *</label>
+                            <input type="text" id="formTitle" required placeholder="Ej: Moderna Casa de 3 Pisos en Las Palmeras" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm focus:ring-2 focus:ring-gold-500 focus:outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">Código de Referencia *</label>
+                            <input type="text" id="formCode" required placeholder="NY-107" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm focus:ring-2 focus:ring-gold-500 focus:outline-none">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">Tipo de Inmueble *</label>
+                            <select id="formType" required class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm focus:ring-2 focus:ring-gold-500 focus:outline-none">
+                                <option value="Casa">Casa</option>
+                                <option value="Departamento">Departamento</option>
+                                <option value="Terreno">Terreno / Lote</option>
+                                <option value="Comercial">Local Comercial</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">Operación *</label>
+                            <select id="formOperation" required class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm focus:ring-2 focus:ring-gold-500 focus:outline-none">
+                                <option value="Venta">Venta</option>
+                                <option value="Alquiler">Alquiler</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">Distrito (Cono Norte) *</label>
+                            <select id="formDistrict" required class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm focus:ring-2 focus:ring-gold-500 focus:outline-none">
+                                <option value="Los Olivos">Los Olivos</option>
+                                <option value="San Martín de Porres">San Martín de Porres</option>
+                                <option value="Comas">Comas</option>
+                                <option value="Carabayllo">Carabayllo</option>
+                                <option value="Independencia">Independencia</option>
+                                <option value="Puente Piedra">Puente Piedra</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">Dirección / Referencia *</label>
+                        <input type="text" id="formAddress" required placeholder="Ej: Urb. Covida, frente a parque, Los Olivos" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm focus:ring-2 focus:ring-gold-500 focus:outline-none">
+                    </div>
+                </div>
+
+                <!-- PRECIOS -->
+                <div class="space-y-4">
+                    <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+                        <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400">
+                            2. Precios y Moneda
+                        </h4>
+                        <span class="text-[11px] text-slate-400">Ingreso manual independiente</span>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">Moneda Principal *</label>
+                            <select id="formCurrency" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm font-semibold text-navy-950 focus:ring-2 focus:ring-gold-500 focus:outline-none">
+                                <option value="USD">🇺🇸 Dólares ($ USD)</option>
+                                <option value="PEN">🇵🇪 Soles (S/. PEN)</option>
+                            </select>
+                            <span class="text-[10px] text-slate-400 mt-1 block">Se mostrará en grande en la web</span>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">Precio en Soles (S/. PEN)</label>
+                            <input type="number" id="formPricePEN" step="1" placeholder="Ej: 380000" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm focus:ring-2 focus:ring-gold-500 focus:outline-none">
+                            <span class="text-[10px] text-slate-400 mt-1 block">Opcional si solo vendes en $</span>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">Precio en Dólares ($ USD)</label>
+                            <input type="number" id="formPriceUSD" step="1" placeholder="Ej: 100000" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm focus:ring-2 focus:ring-gold-500 focus:outline-none">
+                            <span class="text-[10px] text-slate-400 mt-1 block">Opcional si solo vendes en S/.</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ESPECIFICACIONES TÉCNICAS -->
+                <div class="space-y-4">
+                    <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400 border-b border-slate-100 pb-2">
+                        3. Especificaciones del Inmueble
+                    </h4>
+
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">Área Terreno (m²)</label>
+                            <input type="number" id="formAreaM2" placeholder="120" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs focus:outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">Área Constr. (m²)</label>
+                            <input type="number" id="formBuiltAreaM2" placeholder="180" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs focus:outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">Dormitorios</label>
+                            <input type="number" id="formBedrooms" placeholder="3" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs focus:outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">Baños</label>
+                            <input type="number" id="formBathrooms" placeholder="2" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs focus:outline-none">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">Cocheras</label>
+                            <input type="number" id="formParking" placeholder="1" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs focus:outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">Niveles / Pisos</label>
+                            <input type="number" id="formFloors" placeholder="2" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs focus:outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">Antigüedad</label>
+                            <input type="text" id="formAntiquity" placeholder="Estreno / 3 años" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs focus:outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">Distintivo (Badge)</label>
+                            <input type="text" id="formBadge" placeholder="Ocasión / Estreno" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs focus:outline-none">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">Estado de Publicación</label>
+                        <select id="formStatus" class="w-full sm:w-60 bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs focus:outline-none">
+                            <option value="disponible">🟢 Disponible (Visible en la web)</option>
+                            <option value="vendido">🟣 Vendido (Con cartel de vendido)</option>
+                            <option value="alquilado">🔵 Alquilado (Con cartel de alquilado)</option>
+                            <option value="oculto">⚪ Oculto (Borrador privado)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- DESCRIPCIÓN Y BENEFICIOS -->
+                <div class="space-y-4">
+                    <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400 border-b border-slate-100 pb-2">
+                        4. Descripción y Equipamiento
+                    </h4>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">Descripción Detallada *</label>
+                        <textarea id="formDescription" required rows="4" placeholder="Describe los acabados, distribución, cercanía a avenidas principales y ventajas de la propiedad..." class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm focus:ring-2 focus:ring-gold-500 focus:outline-none"></textarea>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">Características / Beneficios (Separados por coma)</label>
+                        <input type="text" id="formFeatures" placeholder="Gas Natural Cálidda, Ascensor, Terraza BBQ, Portón levadizo, Título en Sunarp" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm focus:ring-2 focus:ring-gold-500 focus:outline-none">
+                        <span class="text-[11px] text-slate-400">Separa cada beneficio con una coma.</span>
+                    </div>
+                </div>
+
+                <!-- SUBIDA DE IMÁGENES -->
+                <div class="space-y-4">
+                    <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400 border-b border-slate-100 pb-2">
+                        5. Fotografías del Inmueble
+                    </h4>
+
+                    <!-- ZONA DE CARGA DRAG & DROP -->
+                    <div id="dropZone" class="border-2 border-dashed border-slate-300 hover:border-gold-500 rounded-2xl p-6 text-center cursor-pointer transition bg-slate-50">
+                        <i class="fa-solid fa-cloud-arrow-up text-3xl text-gold-600 mb-2"></i>
+                        <div class="font-bold text-slate-700 text-xs sm:text-sm">
+                            Arrastra y suelta tus fotos aquí o haz clic para seleccionarlas
+                        </div>
+                        <p class="text-[11px] text-slate-400 mt-1">Soporta JPG, PNG, WEBP (Se subirán directamente a tu nube de Supabase)</p>
+                        <input type="file" id="fileInput" multiple accept="image/*" class="hidden">
+                    </div>
+
+                    <!-- ESTADO DE SUBIDA -->
+                    <div id="uploadProgress" class="hidden text-xs text-gold-600 font-bold flex items-center gap-2">
+                        <i class="fa-solid fa-spinner fa-spin"></i> <span>Subiendo imágenes a la nube...</span>
+                    </div>
+
+                    <!-- PREVISUALIZACIÓN DE MINIATURAS -->
+                    <div>
+                        <div class="text-xs font-semibold text-slate-600 mb-2">Fotos del Inmueble (La primera será la foto de portada):</div>
+                        <div id="imagesPreviewContainer" class="grid grid-cols-3 sm:grid-cols-6 gap-3">
+                            <!-- Miniaturas dinámicas -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- BOTONES DE ACCIÓN DEL FORMULARIO -->
+                <div class="pt-6 border-t border-slate-200 flex items-center justify-end gap-3">
+                    <button type="button" id="btnCancelModal" class="px-5 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs transition">
+                        Cancelar
+                    </button>
+                    <button type="submit" id="btnSaveProperty" class="px-6 py-2.5 rounded-xl bg-gradient-gold hover:bg-gold-600 text-navy-950 font-bold text-xs sm:text-sm transition flex items-center gap-2 gold-glow shadow">
+                        <i class="fa-solid fa-floppy-disk"></i>
+                        <span>Guardar y Publicar Inmueble</span>
+                    </button>
+                </div>
+            </form>
+
+        </div>
+    </div>
+
+    <!-- ======================================================================== -->
+    <!-- MODAL: ASISTENTE DE CONFIGURACIÓN DE SUPABASE -->
+    <!-- ======================================================================== -->
+    <div id="configModal" class="hidden fixed inset-0 z-50 bg-navy-950/70 backdrop-blur-sm p-4 flex items-center justify-center">
+        <div class="bg-white w-full max-w-lg rounded-3xl shadow-2xl border border-slate-200 overflow-hidden transform transition-all">
+            <div class="bg-navy-950 p-6 text-white flex items-center justify-between border-b border-white/10">
+                <div class="flex items-center gap-2.5">
+                    <i class="fa-solid fa-database text-gold-400 text-xl"></i>
+                    <h3 class="font-serif font-bold text-lg text-white">Conexión a Supabase</h3>
+                </div>
+                <button id="btnCloseConfigModal" class="text-slate-400 hover:text-white text-2xl">&times;</button>
+            </div>
+
+            <div class="p-6 space-y-4 text-xs">
+                <div class="p-3.5 bg-slate-50 rounded-2xl border border-slate-200 text-slate-600 space-y-1.5 leading-relaxed">
+                    <p class="font-bold text-slate-800">¿Dónde encontrar estos datos en tu cuenta?</p>
+                    <p>1. Entra a tu proyecto en <strong>Supabase.com</strong>.</p>
+                    <p>2. Ve a <strong>Project Settings</strong> (el engranaje) -> <strong>API</strong>.</p>
+                    <p>3. Copia el <strong>Project URL</strong> y la clave <strong>anon public</strong>.</p>
+                </div>
+
+                <div>
+                    <label class="block font-bold text-slate-700 uppercase mb-1">Project URL</label>
+                    <input type="url" id="cfgUrl" placeholder="https://tu-proyecto.supabase.co" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs focus:ring-2 focus:ring-gold-500 focus:outline-none">
+                </div>
+
+                <div>
+                    <label class="block font-bold text-slate-700 uppercase mb-1">Anon Public Key</label>
+                    <input type="password" id="cfgKey" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6..." class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs focus:ring-2 focus:ring-gold-500 focus:outline-none">
+                </div>
+
+                <div class="pt-4 flex items-center justify-between gap-3 border-t border-slate-100">
+                    <button id="btnClearConfig" class="text-red-500 hover:text-red-700 font-semibold transition">
+                        Limpiar conexión
+                    </button>
+                    <button id="btnSaveConfig" class="px-5 py-2.5 rounded-xl bg-gradient-gold hover:bg-gold-600 text-navy-950 font-bold transition">
+                        Guardar Conexión
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TOAST NOTIFICATION CONTAINER -->
+    <div id="toastContainer" class="fixed top-6 right-6 z-50 flex flex-col gap-3 pointer-events-none"></div>
+
+    <!-- SCRIPTS -->
+    <script src="js/data.js"></script>
+    <script src="js/supabase-config.js"></script>
+    <script src="js/admin.js"></script>
+</body>
+</html>
